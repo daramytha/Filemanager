@@ -33,10 +33,18 @@ import java.util.Locale
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Meminta izin penyimpanan Android 11+
         checkStoragePermission()
+
         setContent {
             MaterialTheme {
-                PcFileManagerScreen()
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color(0xFF1E1E1E)
+                ) {
+                    PcFileManagerScreen()
+                }
             }
         }
     }
@@ -44,10 +52,15 @@ class MainActivity : ComponentActivity() {
     private fun checkStoragePermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
-                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                    data = Uri.parse("package:$packageName")
+                try {
+                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                        data = Uri.parse("package:$packageName")
+                    }
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                    startActivity(intent)
                 }
-                startActivity(intent)
             }
         }
     }
@@ -55,23 +68,26 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun PcFileManagerScreen() {
-    val rootPath = Environment.getExternalStorageDirectory().absolutePath
+    val rootPath = try {
+        Environment.getExternalStorageDirectory().absolutePath
+    } catch (e: Exception) {
+        "/sdcard"
+    }
+    
     var currentPath by remember { mutableStateOf(rootPath) }
 
     Row(modifier = Modifier.fillMaxSize()) {
-        // 1. SIDEBAR KIRI (Quick Access)
         Sidebar(
             onNavigate = { path -> currentPath = path },
             rootPath = rootPath,
             modifier = Modifier
-                .width(220.dp)
+                .width(200.dp)
                 .fillMaxHeight()
                 .background(Color(0xFF252526))
         )
 
         Divider(modifier = Modifier.fillMaxHeight().width(1.dp), color = Color.Gray)
 
-        // 2. AREA UTAMA (Tampilan PC)
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -175,7 +191,7 @@ fun TableHeader() {
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Text("Nama", color = Color.Gray, modifier = Modifier.weight(2f), style = MaterialTheme.typography.labelSmall)
-        Text("Tanggal Modifikasi", color = Color.Gray, modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelSmall)
+        Text("Tanggal", color = Color.Gray, modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelSmall)
         Text("Tipe", color = Color.Gray, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
         Text("Ukuran", color = Color.Gray, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
     }
@@ -184,9 +200,15 @@ fun TableHeader() {
 @Composable
 fun FileListTable(currentPath: String, onFolderClick: (String) -> Unit) {
     val directory = File(currentPath)
-    val files = directory.listFiles()?.toList()?.sortedWith(
-        compareBy({ !it.isDirectory }, { it.name.lowercase() })
-    ) ?: emptyList()
+    val files = remember(currentPath) {
+        try {
+            directory.listFiles()?.toList()?.sortedWith(
+                compareBy({ !it.isDirectory }, { it.name.lowercase() })
+            ) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 
     val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
 
@@ -203,7 +225,6 @@ fun FileListTable(currentPath: String, onFolderClick: (String) -> Unit) {
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Nama File
                 Row(modifier = Modifier.weight(2f), verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = if (file.isDirectory) Icons.Default.Folder else Icons.Default.Description,
@@ -215,23 +236,20 @@ fun FileListTable(currentPath: String, onFolderClick: (String) -> Unit) {
                     Text(file.name, color = Color.White, style = MaterialTheme.typography.bodySmall, maxLines = 1)
                 }
 
-                // Modifikasi
                 Text(
-                    text = dateFormat.format(Date(file.lastModified())),
+                    text = try { dateFormat.format(Date(file.lastModified())) } catch(e: Exception) { "-" },
                     color = Color.LightGray,
                     modifier = Modifier.weight(1.5f),
                     style = MaterialTheme.typography.bodySmall
                 )
 
-                // Tipe
                 Text(
-                    text = if (file.isDirectory) "File folder" else file.extension.uppercase() + " File",
+                    text = if (file.isDirectory) "Folder" else "${file.extension.uppercase()} File",
                     color = Color.LightGray,
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.bodySmall
                 )
 
-                // Ukuran
                 Text(
                     text = if (file.isDirectory) "" else "${file.length() / 1024} KB",
                     color = Color.LightGray,
