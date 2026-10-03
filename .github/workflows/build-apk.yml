@@ -22,18 +22,18 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      # Membuat Gradle Wrapper jika belum ada di repositori
+      # Membuat Gradle Wrapper dengan plugin repositori yang sudah dikonfigurasi
       - name: Generate Gradle Wrapper
         run: gradle wrapper
 
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      # Mengompilasi kode menjadi file APK
+      # Membangun file APK
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
-      # Mengunggah hasil APK agar bisa di-download
+      # Mengunggah hasil APK
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
