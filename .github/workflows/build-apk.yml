@@ -22,18 +22,22 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      # Kunci ke Gradle versi 8.5 agar kompatibel penuh
+      # Tambahkan alokasi memori JVM ke gradle.properties
+      - name: Configure Gradle Memory & AndroidX
+        run: |
+          echo "android.useAndroidX=true" >> gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
+          echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" >> gradle.properties
+
       - name: Generate Gradle Wrapper
         run: gradle wrapper --gradle-version 8.5
 
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      # Membangun file APK
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
-      # Mengunggah hasil APK
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
